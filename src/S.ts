@@ -1,6 +1,6 @@
 export interface S {
     // Computation root
-    root<T>(fn : (dispose? : () => void) => T) : T;
+    root<T>(fn : (dispose : () => void) => T) : T;
 
     // Computation constructors
     <T>(fn : () => T) : () => T;
