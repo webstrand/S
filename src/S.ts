@@ -150,7 +150,7 @@ S.value = function value<T>(current : T, eq? : (a : T, b : T) => boolean) : Data
 };
 
 S.freeze = function freeze<T>(fn : () => T) : T {
-    var result : T = undefined!;
+    var result : T;
     
     if (RunningClock !== null) {
         result = fn();
@@ -320,7 +320,7 @@ class Log {
 }
     
 class Queue<T> {
-    items = [] as T[];
+    items = [] as (T | null)[];
     count = 0;
     
     reset() {
@@ -335,7 +335,7 @@ class Queue<T> {
         var items = this.items;
         for (var i = 0; i < this.count; i++) {
             fn(items[i]!);
-            items[i] = null!;
+            items[i] = null;
         }
         this.count = 0;
     }
@@ -383,7 +383,7 @@ function makeComputationNode<T>(fn : (v : T | undefined) => T, value : T | undef
     if (toplevel) finishToplevelComputation(owner, listener);
 
     makeComputationNodeResult.node = recycled ? null : node;
-    makeComputationNodeResult.value =  value!;
+    makeComputationNodeResult.value =  value;
 
     return makeComputationNodeResult;
 }
