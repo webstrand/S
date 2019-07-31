@@ -75,7 +75,7 @@ S.root = function root<T>(fn : (dispose : () => void) => T) : T {
     Owner = root;
 
     try {
-        result = disposer === null ? (fn as any)() : fn(disposer);
+        result = disposer === null ? (fn as unknown as () => T)() : fn(disposer);
     } finally {
         Owner = owner;
     }
