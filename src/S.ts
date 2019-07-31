@@ -5,8 +5,8 @@ export interface S {
     // Computation constructors
     <T>(fn : () => T) : () => T;
     <T>(fn : (v : T) => T, seed : T) : () => T;
-    on<T>(ev : () => any, fn : () => T) : () => T;
-    on<T>(ev : () => any, fn : (v : T) => T, seed : T, onchanges?: boolean) : () => T;
+    on<T>(ev : (() => unknown) | readonly (() => unknown)[], fn : () => T) : () => T;
+    on<T>(ev : (() => unknown) | readonly (() => unknown)[], fn : (v : T) => T, seed : T, onchanges?: boolean) : () => T;
     effect<T>(fn : () => T) : void;
     effect<T>(fn : (v : T) => T, seed : T) : void;
 
@@ -87,7 +87,7 @@ S.root = function root<T>(fn : (dispose : () => void) => T) : T {
     return result;
 };
 
-S.on = function on<T>(ev : () => any, fn : (v? : T) => T, seed? : T, onchanges? : boolean) {
+S.on = function on<T>(ev : (() => unknown) | readonly (() => unknown)[], fn : (v? : T) => T, seed? : T, onchanges? : boolean) {
     if (Array.isArray(ev)) ev = callAll(ev);
     onchanges = !!onchanges;
 
@@ -95,7 +95,7 @@ S.on = function on<T>(ev : () => any, fn : (v? : T) => T, seed? : T, onchanges? 
     
     function on(value : T | undefined) {
         var listener = Listener;
-        ev(); 
+        (ev as () => unknown)();
         if (onchanges) onchanges = false;
         else {
             Listener = null;
@@ -106,7 +106,7 @@ S.on = function on<T>(ev : () => any, fn : (v? : T) => T, seed? : T, onchanges? 
     }
 };
 
-function callAll(ss : (() => any)[]) {
+function callAll(ss : readonly (() => unknown)[]) {
     return function all() {
         for (var i = 0; i < ss.length; i++) ss[i]();
     }
