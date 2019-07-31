@@ -21,7 +21,7 @@ export interface S {
     sample<T>(fn : () => T) : T;
 
     // Freeing external resources
-    cleanup(fn : (final : boolean) => any) : void;
+    cleanup(fn : (final : boolean) => unknown) : void;
 
     // experimental - methods for creating new kinds of bindings
     isFrozen() : boolean;
@@ -180,7 +180,7 @@ S.sample = function sample<T>(fn : () => T) : T {
     return result;
 }
 
-S.cleanup = function cleanup(fn : (final : boolean) => void) : void {
+S.cleanup = function cleanup(fn : (final : boolean) => unknown) : void {
     if (Owner === null) console.warn("cleanups created without a root or parent will never be run");
     else if (Owner.cleanups === null) Owner.cleanups = [fn];
     else Owner.cleanups.push(fn);
