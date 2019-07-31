@@ -80,7 +80,7 @@ S.root = function root<T>(fn : (dispose : () => void) => T) : T {
         Owner = owner;
     }
 
-    if (disposer !== null && recycleOrClaimNode(root, null as any, undefined, true)) {
+    if (disposer !== null && recycleOrClaimNode(root, null, undefined, true)) {
         root = null!;
     }
 
@@ -417,7 +417,7 @@ function getCandidateNode() {
     return node;
 }
 
-function recycleOrClaimNode<T>(node : ComputationNode, fn : (v : T | undefined) => T, value : T, orphan : boolean) {
+function recycleOrClaimNode<T>(node : ComputationNode, fn : null | ((v : T | undefined) => T), value : T, orphan : boolean) {
     var _owner = orphan || Owner === null || Owner === UNOWNED ? null : Owner,
         recycle = node.source1 === null && (node.owned === null && node.cleanups === null || _owner !== null),
         i : number;
