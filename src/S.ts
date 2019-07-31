@@ -123,7 +123,7 @@ S.data = function data<T>(value : T) : (value? : T) => T {
         if (arguments.length === 0) {
             return node.current();
         } else {
-            return node.next(value);
+            return node.next(value!);
         }
     }
 };
@@ -229,7 +229,7 @@ S.isListening = function isListening() {
 class Clock {
     time      = 0;
 
-    changes   = new Queue<DataNode>(); // batched changes to data nodes
+    changes   = new Queue<DataNode<unknown>>(); // batched changes to data nodes
     updates   = new Queue<ComputationNode>(); // computations to update
     disposes  = new Queue<ComputationNode>(); // disposals to run after current batch of updates finishes
 }
@@ -238,12 +238,12 @@ var RootClockProxy = {
     time: function () { return RootClock.time; }
 };
 
-class DataNode {
-    pending = NOTPENDING as any;   
+class DataNode<T> {
+    pending = NOTPENDING as NOTPENDING | T;
     log     = null as Log | null;
     
     constructor(
-        public value : any
+        public value : T
     ) { }
 
     current() {
@@ -253,7 +253,7 @@ class DataNode {
         return this.value;
     }
 
-    next(value : any) {
+    next(value : T) {
         if (RunningClock !== null) {
             if (this.pending !== NOTPENDING) { // value has already been set once, check for conflicts
                 if (value !== this.pending) {
@@ -272,7 +272,7 @@ class DataNode {
                 this.value = value;
             }
         }
-        return value!;
+        return value;
     }
 
     clock() {
@@ -341,8 +341,11 @@ class Queue<T> {
     }
 }
 
+const enum NOTPENDINGTAG { _ = "_" }
+type NOTPENDING = NOTPENDINGTAG;
+
 // Constants
-var NOTPENDING = {},
+var NOTPENDING = {} as NOTPENDING,
     CURRENT    = 0,
     STALE      = 1,
     RUNNING    = 2,
@@ -487,7 +490,7 @@ function logRead(from : Log) {
     }
 }
 
-function logDataRead(data : DataNode) {
+function logDataRead<T>(data : DataNode<T>) {
     if (data.log === null) data.log = new Log();
     logRead(data.log);
 }
@@ -536,7 +539,7 @@ function run(clock : Clock) {
     RunningClock = running;
 }
 
-function applyDataChange(data : DataNode) {
+function applyDataChange(data : DataNode<unknown>) {
     data.value = data.pending;
     data.pending = NOTPENDING;
     if (data.log) markComputationsStale(data.log);
