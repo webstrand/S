@@ -29,7 +29,7 @@ export interface S {
     makeDataNode<T>(value : T) : IDataNode<T>;
     makeComputationNode<T, S>(fn : (val : S) => T, seed : S, orphan : boolean, sample : true) : { node : INode<T> | null, value : T };
     makeComputationNode<T, S>(fn : (val : T | S) => T, seed : S, orphan : boolean, sample : boolean) : { node : INode<T> | null, value : T };
-    disposeNode(node : INode<any>) : void;
+    disposeNode<T>(node : INode<T>) : void;
 }
 
 export interface DataSignal<T> {
@@ -207,7 +207,7 @@ interface IDataNode<T> extends INode<T> {
 export { INode as Node, IDataNode as DataNode, IClock as Clock };
 
 S.makeComputationNode = makeComputationNode;
-S.disposeNode = function disposeNode(node : ComputationNode) {
+S.disposeNode = function disposeNode<T>(node : ComputationNode<T>) {
     if (RunningClock !== null) {
         RootClock.disposes.add(node);
     } else {
@@ -230,8 +230,8 @@ class Clock {
     time      = 0;
 
     changes   = new Queue<DataNode<unknown>>(); // batched changes to data nodes
-    updates   = new Queue<ComputationNode>(); // computations to update
-    disposes  = new Queue<ComputationNode>(); // disposals to run after current batch of updates finishes
+    updates   = new Queue<ComputationNode<any>>(); // computations to update
+    disposes  = new Queue<ComputationNode<any>>(); // disposals to run after current batch of updates finishes
 }
 
 var RootClockProxy = {
@@ -280,9 +280,9 @@ class DataNode<T> {
     }
 }
 
-class ComputationNode {
-    fn        = null as ((v : any) => any) | null;
-    value     = undefined as any;
+class ComputationNode<T> {
+    fn        = null as ((v : T) => T) | null;
+    value     = undefined as T | undefined;
     age       = -1
     state     = CURRENT;
     source1   = null as null | Log;
@@ -290,7 +290,7 @@ class ComputationNode {
     sources   = null as null | Log[];
     sourceslots = null as null | number[];
     log       = null as Log | null;
-    owned     = null as ComputationNode[] | null;
+    owned     = null as ComputationNode<unknown>[] | null;
     cleanups  = null as (((final : boolean) => void)[]) | null;
     
     constructor() { }
@@ -304,7 +304,7 @@ class ComputationNode {
             logComputationRead(this);
         }
 
-        return this.value;
+        return this.value!;
     }
 
     clock() {
@@ -313,9 +313,9 @@ class ComputationNode {
 }
 
 class Log {
-    node1 = null as null | ComputationNode;
+    node1 = null as null | ComputationNode<unknown>;
     node1slot = 0;
-    nodes = null as null | ComputationNode[];
+    nodes = null as null | ComputationNode<unknown>[];
     nodeslots = null as null | number[];
 }
     
@@ -354,13 +354,13 @@ var NOTPENDING = {} as NOTPENDING,
 // "Globals" used to keep track of current system state
 var RootClock    = new Clock(),
     RunningClock = null as Clock | null, // currently running clock 
-    Listener     = null as ComputationNode | null, // currently listening computation
-    Owner        = null as ComputationNode | null, // owner for new computations
-    LastNode     = null as ComputationNode | null; // cached unused node, for re-use
+    Listener     = null as ComputationNode<any> | null, // currently listening computation
+    Owner        = null as ComputationNode<any> | null, // owner for new computations
+    LastNode     = null as ComputationNode<any> | null; // cached unused node, for re-use
 
 // Functions
-var makeComputationNodeResult = { node : null as null | ComputationNode, value : undefined as any };
-function makeComputationNode<T>(fn : (v : T | undefined) => T, value : T | undefined, orphan : boolean, sample : boolean) : { node: ComputationNode | null, value : T } {
+var makeComputationNodeResult = { node : null as null | ComputationNode<any>, value : undefined as any };
+function makeComputationNode<T>(fn : (v : T | undefined) => T, value : T | undefined, orphan : boolean, sample : boolean) : { node: ComputationNode<T> | null, value : T } {
     var node     = getCandidateNode(),
         owner    = Owner,
         listener = Listener,
@@ -400,7 +400,7 @@ function execToplevelComputation<T>(fn : (v : T | undefined) => T, value : T | u
     }
 }
 
-function finishToplevelComputation(owner : ComputationNode | null, listener : ComputationNode | null) {
+function finishToplevelComputation<T, U>(owner : ComputationNode<T> | null, listener : ComputationNode<U> | null) {
     if (RootClock.changes.count > 0 || RootClock.updates.count > 0) {
         RootClock.time++;
         try {
@@ -420,7 +420,7 @@ function getCandidateNode() {
     return node;
 }
 
-function recycleOrClaimNode<T>(node : ComputationNode, fn : null | ((v : T | undefined) => T), value : T, orphan : boolean) {
+function recycleOrClaimNode<T>(node : ComputationNode<any>, fn : null | ((v : T | undefined) => T), value : T, orphan : boolean) {
     var _owner = orphan || Owner === null || Owner === UNOWNED ? null : Owner,
         recycle = node.source1 === null && (node.owned === null && node.cleanups === null || _owner !== null),
         i : number;
@@ -495,7 +495,7 @@ function logDataRead<T>(data : DataNode<T>) {
     logRead(data.log);
 }
 
-function logComputationRead(node : ComputationNode) {
+function logComputationRead<T>(node : ComputationNode<T>) {
     if (node.log === null) node.log = new Log();
     logRead(node.log);
 }
@@ -558,7 +558,7 @@ function markComputationsStale(log : Log) {
     }
 }
 
-function markNodeStale(node : ComputationNode) {
+function markNodeStale<T>(node : ComputationNode<T>) {
     var time = RootClock.time;
     if (node.age < time) {
         node.age = time;
@@ -569,7 +569,7 @@ function markNodeStale(node : ComputationNode) {
     }
 }
 
-function markOwnedNodesForDisposal(owned : ComputationNode[]) {
+function markOwnedNodesForDisposal<T extends unknown[]>(owned : { [P in keyof T]: ComputationNode<T[P]> }) {
     for (var i = 0; i < owned.length; i++) {
         var child = owned[i];
         child.age = RootClock.time;
@@ -578,7 +578,7 @@ function markOwnedNodesForDisposal(owned : ComputationNode[]) {
     }
 }
 
-function updateNode(node : ComputationNode) {
+function updateNode<T>(node : ComputationNode<T>) {
     if (node.state === STALE) {
         var owner = Owner,
             listener = Listener;
@@ -587,7 +587,7 @@ function updateNode(node : ComputationNode) {
     
         node.state = RUNNING;
         cleanup(node, false);
-        node.value = node.fn!(node.value);
+        node.value = node.fn!(node.value!);
         node.state = CURRENT;
         
         Owner = owner;
@@ -595,7 +595,7 @@ function updateNode(node : ComputationNode) {
     }
 }
     
-function cleanup(node : ComputationNode, final : boolean) {
+function cleanup<T>(node : ComputationNode<T>, final : boolean) {
     var source1     = node.source1,
         sources     = node.sources,
         sourceslots = node.sourceslots,
@@ -632,7 +632,7 @@ function cleanup(node : ComputationNode, final : boolean) {
 function cleanupSource(source : Log, slot : number) {
     var nodes = source.nodes!,
         nodeslots = source.nodeslots!,
-        last : ComputationNode,
+        last : ComputationNode<unknown>,
         lastslot : number;
     if (slot === -1) {
         source.node1 = null;
@@ -651,7 +651,7 @@ function cleanupSource(source : Log, slot : number) {
     }
 }
     
-function dispose(node : ComputationNode) {
+function dispose<T>(node : ComputationNode<T>) {
     node.fn  = null;
     node.log = null;
     cleanup(node, true);
