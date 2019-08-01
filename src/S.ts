@@ -14,6 +14,10 @@ export interface S {
     data<T>(value : T) : DataSignal<T>;
     value<T>(value : T, eq? : (a : T, b : T) => boolean) : DataSignal<T>;
 
+    // Promise interoperation
+    promise<T>(fn : () => T) : Promise<T>;
+    await<T, TResult1 = never, TResult2 = never>(promise : PromiseLike<T>, onfulfilled : ((v : T) => TResult1 | PromiseLike<TResult1>), onrejected? : ((reason : any) => TResult2 | PromiseLike<TResult2>) | undefined | null) : PromiseLike<TResult1 | TResult2>;
+
     // Batching changes
     freeze<T>(fn : () => T) : T;
 
@@ -148,6 +152,55 @@ S.value = function value<T>(current : T, eq? : (a : T, b : T) => boolean) : Data
         }
     }
 };
+
+S.promise = function promise<T>(ev : () => T) : Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        let firstrun = true;
+
+        makeComputationNode(() => {
+            const result = ev();
+            if (firstrun) return firstrun = false;
+            resolve(result);
+        }, void 0, false, false);
+
+        S.cleanup(reject);
+    });
+}
+
+S.await = function <T, TResult1 = never, TResult2 = never>(promise : PromiseLike<T>, onfulfilled : ((v : T) => TResult1 | PromiseLike<TResult1>), onrejected? : ((reason : any) => TResult2 | PromiseLike<TResult2>) | undefined | null) : PromiseLike<TResult1 | TResult2> {
+    const originalOwner = Owner;
+    const originalListener = Listener;
+
+    return promise.then(
+        function (value : T) : TResult1 | PromiseLike<TResult1> {
+            const owner = Owner;
+            const listener = Listener;
+
+            Owner = originalOwner;
+            Listener = originalListener;
+
+            const result = onfulfilled(value);
+
+            Owner = owner;
+            Listener = listener;
+            return result;
+        },
+
+        onrejected ? function (reason : any) : TResult2 | PromiseLike<TResult2> {
+            const owner = Owner;
+            const listener = Listener;
+
+            Owner = originalOwner;
+            Listener = originalListener;
+
+            const result = onrejected(reason);
+
+            Owner = owner;
+            Listener = listener;
+            return result;
+        } : undefined
+    );
+}
 
 S.freeze = function freeze<T>(fn : () => T) : T {
     var result : T;
