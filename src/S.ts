@@ -284,7 +284,7 @@ class ComputationNode<T> {
     fn        = null as ((v : T) => T) | null;
     value     = undefined as T | undefined;
     age       = -1
-    state     = CURRENT;
+    state     = CURRENT as CURRENT | RUNNING | STALE;
     source1   = null as null | Log;
     source1slot = 0;
     sources   = null as null | Log[];
@@ -341,14 +341,23 @@ class Queue<T> {
     }
 }
 
-const enum NOTPENDINGTAG { _ = "_" }
-type NOTPENDING = NOTPENDINGTAG;
+const enum STATETAG {
+    NOTPENDING = "NOTPENDING",
+    CURRENT = "CURRENT",
+    STALE = "STALE",
+    RUNNING = "RUNNING",
+}
+
+type NOTPENDING = STATETAG.NOTPENDING;
+type CURRENT = STATETAG.CURRENT;
+type STALE = STATETAG.STALE;
+type RUNNING = STATETAG.RUNNING;
 
 // Constants
 var NOTPENDING = {} as NOTPENDING,
-    CURRENT    = 0,
-    STALE      = 1,
-    RUNNING    = 2,
+    CURRENT    = {} as CURRENT,
+    STALE      = {} as STALE,
+    RUNNING    = {} as RUNNING,
     UNOWNED    = new ComputationNode();
 
 // "Globals" used to keep track of current system state
