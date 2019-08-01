@@ -87,15 +87,15 @@ S.root = function root<T>(fn : (dispose : () => void) => T) : T {
     return result;
 };
 
-S.on = function on<T>(ev : (() => unknown) | readonly (() => unknown)[], fn : (v? : T) => T, seed? : T, onchanges? : boolean) {
-    if (Array.isArray(ev)) ev = callAll(ev);
+S.on = function on<T>(signals : (() => unknown) | readonly (() => unknown)[], fn : (v? : T) => T, seed? : T, onchanges? : boolean) {
+    const ev = typeof signals !== "function" ? callAll(signals) : signals;
     onchanges = !!onchanges;
 
     return S(on, seed);
     
     function on(value : T | undefined) {
         var listener = Listener;
-        (ev as () => unknown)();
+        ev();
         if (onchanges) onchanges = false;
         else {
             Listener = null;
