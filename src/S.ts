@@ -601,10 +601,12 @@ function run(clock : Clock) {
     RunningClock = running;
 }
 
-function applyDataChange(data : DataNode<unknown>) {
-    data.value = data.pending;
-    data.pending = NOTPENDING;
-    if (data.log) markComputationsStale(data.log);
+function applyDataChange<T>(data : DataNode<T>) {
+    if (data.pending !== NOTPENDING) {
+        data.value = data.pending;
+        data.pending = NOTPENDING;
+        if (data.log) markComputationsStale(data.log);
+    }
 }
 
 function markComputationsStale(log : Log) {
